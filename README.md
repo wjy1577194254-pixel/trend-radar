@@ -216,4 +216,4 @@ vendor/jieba/       可选的中文分词
 
 ## License
 
-MIT
+MIT © 2026 wjy1577194254-pixel

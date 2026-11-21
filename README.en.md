@@ -166,4 +166,4 @@ envload.py          dependency-free .env loader
 
 ## License
 
-MIT
+MIT © 2026 wjy1577194254-pixel
