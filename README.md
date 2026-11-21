@@ -246,6 +246,19 @@ python3 mcp_server.py   # 起 server（stdio）
 | `list_sources` | 所有源的状态（排障用） |
 | `source_items` | 某个源的完整榜单 |
 | `topic_breakdown` | 国内 vs 国外的主题占比对照 |
+| **`term_history`** | **这个词火多久了** —— 出现轨迹 + rising / persistent / fading / sporadic 判断 |
+
+**为什么「时间」比「此刻」重要**：
+
+只看现在的热榜，分不清「长期霸榜」和「今天刚好上了」。
+
+```
+深圳   → 34/34 轮，平均 4.8 个平台  → persistent（真趋势）
+小米   → 14/34 轮                   → fading（在退潮）
+某某   → 1/34 轮                    → sporadic（偶发）
+```
+
+这个判断直接改变结论：**该跟进还是该忽略**。
 
 **为什么这对 agent 有用**：
 

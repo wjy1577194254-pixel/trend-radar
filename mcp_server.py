@@ -57,6 +57,26 @@ def load_data() -> dict[str, Any] | None:
     return json.loads(f.read_text(encoding="utf-8"))
 
 
+HISTORY = OUT_ROOT / "history.jsonl"
+
+
+def load_history(limit: int = 200) -> list[dict]:
+    """读 history.jsonl 最近 N 轮。每行 {"ts": "...", "titles": {sid: [title, ...]}}。"""
+    if not HISTORY.exists():
+        return []
+    lines = HISTORY.read_text(encoding="utf-8").splitlines()
+    rows = []
+    for line in lines[-limit:]:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return rows
+
+
 def _ok_count(data: dict) -> int:
     return sum(1 for s in data["sources"].values() if s.get("ok"))
 
@@ -227,6 +247,84 @@ def tool_topics(_args: dict) -> dict:
     return {"topics": rows}
 
 
+def tool_term_history(args: dict) -> dict:
+    """一个词在各轮抓取中的出现轨迹 —— 用来区分真趋势和一次性上榜。"""
+    term = (args.get("term") or "").strip()
+    if not term:
+        return {"error": "term 不能为空"}
+
+    rows = load_history(args.get("rounds") or 60)
+    if not rows:
+        return {"error": "还没有历史数据。history.jsonl 需要至少两轮抓取才会出现。"}
+
+    q = term.lower()
+    series = []
+    for row in rows:
+        titles = row.get("titles") or {}
+        per_platform = {}
+        for sid, lst in titles.items():
+            hits = [(i + 1, t) for i, t in enumerate(lst) if q in (t or "").lower()]
+            if hits:
+                per_platform[sid] = {
+                    "count": len(hits),
+                    "best_rank": min(r for r, _ in hits),
+                    "top_title": hits[0][1],
+                }
+        series.append({
+            "ts": row.get("ts", ""),
+            "platforms": len(per_platform),
+            "mentions": sum(v["count"] for v in per_platform.values()),
+            "best_rank": min((v["best_rank"] for v in per_platform.values()), default=None),
+            "detail": per_platform,
+        })
+
+    appeared = [s for s in series if s["platforms"] > 0]
+    if not appeared:
+        return {
+            "term": term,
+            "rounds_analyzed": len(series),
+            "appearances": 0,
+            "appearance_rate": 0.0,
+            "avg_platforms": 0.0,
+            "verdict": "never_seen",
+            "verdict_meaning": "从未出现",
+            "series": [],
+        }
+
+    rate = len(appeared) / len(series)
+    half = max(len(series) // 2, 1)
+    early = sum(1 for s in series[:half] if s["platforms"] > 0)
+    late = sum(1 for s in series[half:] if s["platforms"] > 0)
+    early_rate = early / half
+    late_rate = late / max(len(series) - half, 1)
+
+    if rate >= 0.7:
+        verdict = "persistent"
+    elif late_rate > early_rate * 1.5:
+        verdict = "rising"
+    elif early_rate > late_rate * 1.5:
+        verdict = "fading"
+    else:
+        verdict = "sporadic"
+
+    return {
+        "term": term,
+        "rounds_analyzed": len(series),
+        "appearances": len(appeared),
+        "appearance_rate": round(rate, 2),
+        "avg_platforms": round(sum(s["platforms"] for s in appeared) / len(appeared), 1),
+        "verdict": verdict,
+        "verdict_meaning": {
+            "persistent": "长期在榜，已经形成稳定关注",
+            "rising": "近期明显升温",
+            "fading": "在退潮",
+            "sporadic": "零星出现，可能是偶发话题",
+            "never_seen": "从未出现",
+        }.get(verdict, ""),
+        "series": [s for s in series if s["platforms"] > 0][-20:],
+    }
+
+
 TOOLS = [
     {
         "name": "trending_overview",
@@ -279,6 +377,20 @@ TOOLS = [
         },
     },
     {
+        "name": "term_history",
+        "description": "一个词在历史各轮抓取中的出现轨迹。用来区分「真趋势」和「今天刚好上了榜」——"
+                       "返回每轮出现在几个平台、最低排名、以及 rising/persistent/fading/sporadic 的判断。"
+                       "问「这东西火多久了」「是不是在退潮」时用它。",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "term": {"type": "string", "description": "要查的词，中英文都行"},
+                "rounds": {"type": "integer", "description": "回看多少轮，默认 60"},
+            },
+            "required": ["term"],
+        },
+    },
+    {
         "name": "topic_breakdown",
         "description": "主题分布对照：国内 vs 国外在各主题（政治军事/科技AI/娱乐明星…）的占比。"
                        "用来判断「两边关注的东西差在哪」。",
@@ -293,6 +405,7 @@ HANDLERS = {
     "list_sources": tool_sources,
     "source_items": tool_source_items,
     "topic_breakdown": tool_topics,
+    "term_history": tool_term_history,
 }
 
 

@@ -196,6 +196,18 @@ Configure in Claude Desktop / Cursor / any MCP client:
 | `list_sources` | Health of every source |
 | `source_items` | Full ranking for one source |
 | `topic_breakdown` | CN vs intl topic share |
+| **`term_history`** | **How long has this term been around** — appearance trail + rising / persistent / fading / sporadic |
+
+**Why time beats the snapshot**: a single trending page can't tell "dominating for weeks"
+from "just showed up today".
+
+```
+深圳  → 34/34 rounds, 4.8 platforms avg  → persistent (real trend)
+小米  → 14/34 rounds                     → fading
+xyz   → 1/34 rounds                     → sporadic
+```
+
+That verdict changes the decision: follow up, or ignore.
 
 **Why this matters for agents**: a trending page is built for humans. An agent needs
 structured, comparable, source-attributed data. Every term here answers: how many
