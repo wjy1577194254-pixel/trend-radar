@@ -164,6 +164,15 @@ envload.py          dependency-free .env loader
 - **Sources rot.** Platforms change their APIs; `sources.py` is the most fragile part
 - **No long-term archive** — only the last 30 rounds are kept
 
+## Data & disclaimer
+
+This project **only fetches publicly accessible data**, for personal research and learning.
+
+- Content in the generated report (titles, summaries, data) **remains the copyright of the respective platforms and authors**; this project claims no rights over it
+- Mind your fetch frequency and use; respect each site's `robots.txt` and terms of service
+- Do not use it for commercial resale, bulk republishing, or anything that infringes authors' rights
+- The code is provided under MIT, "as is", without warranty of any kind
+
 ## License
 
 MIT © 2026 wjy1577194254-pixel
