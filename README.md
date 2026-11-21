@@ -214,6 +214,51 @@ vendor/jieba/       可选的中文分词
 
 ---
 
+## 给 agent 用：MCP server
+
+数据不只能看，还能被 agent 直接查。
+
+```bash
+python3 radar.py        # 先有数据
+python3 mcp_server.py   # 起 server（stdio）
+```
+
+在 Claude Desktop / Cursor / 任意 MCP 客户端里配：
+
+```json
+{
+  "mcpServers": {
+    "trend-radar": {
+      "command": "python3",
+      "args": ["/绝对路径/trend-radar/mcp_server.py"]
+    }
+  }
+}
+```
+
+**六个工具**：
+
+| 工具 | 干什么 |
+|---|---|
+| `trending_overview` | 全局：几个源在线、多少条、国内/国外 top12、主题分布 |
+| `search_term` | 查一个词在各平台的表现 —— **返回 platform_count，≥2 就是跨平台发酵** |
+| `consensus_terms` | 跨平台共识词排行 |
+| `list_sources` | 所有源的状态（排障用） |
+| `source_items` | 某个源的完整榜单 |
+| `topic_breakdown` | 国内 vs 国外的主题占比对照 |
+
+**为什么这对 agent 有用**：
+
+热榜是给人看的，agent 要的是**结构化的、可比较的、带来源的**数据。这里每个词都能回答：
+
+- 它在几个平台出现？（1 个 = 平台内部梗，5 个 = 全网都在说）
+- 各平台排第几？（微博第 1 但知乎第 40，说明人群不同）
+- 热度是多少？（绝对值，不是排名）
+- 原始链接在哪？（可以点进去核实）
+- 国内和国外关注的重心差在哪？（主题分布对比）
+
+零依赖，`json` + `pathlib` + `sys` 就够。
+
 ## 数据与免责
 
 本项目**只抓取公开可访问的公开数据**，用于个人研究与学习。

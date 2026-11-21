@@ -164,6 +164,45 @@ envload.py          dependency-free .env loader
 - **Sources rot.** Platforms change their APIs; `sources.py` is the most fragile part
 - **No long-term archive** — only the last 30 rounds are kept
 
+## For agents: MCP server
+
+The data isn't just readable — it's queryable.
+
+```bash
+python3 radar.py        # fetch first
+python3 mcp_server.py   # start the server (stdio)
+```
+
+Configure in Claude Desktop / Cursor / any MCP client:
+
+```json
+{
+  "mcpServers": {
+    "trend-radar": {
+      "command": "python3",
+      "args": ["/absolute/path/trend-radar/mcp_server.py"]
+    }
+  }
+}
+```
+
+**Six tools:**
+
+| Tool | What it does |
+|---|---|
+| `trending_overview` | Sources online, item count, top terms per region, topic split |
+| `search_term` | Where a term shows up — **returns `platform_count`; ≥2 means it's actually spreading** |
+| `consensus_terms` | Cross-platform consensus ranking |
+| `list_sources` | Health of every source |
+| `source_items` | Full ranking for one source |
+| `topic_breakdown` | CN vs intl topic share |
+
+**Why this matters for agents**: a trending page is built for humans. An agent needs
+structured, comparable, source-attributed data. Every term here answers: how many
+platforms, what rank on each, absolute heat, original URL, and how the two regions differ.
+
+Zero dependencies — `json`, `pathlib`, `sys`.
+
 ## Data & disclaimer
 
 This project **only fetches publicly accessible data**, for personal research and learning.
