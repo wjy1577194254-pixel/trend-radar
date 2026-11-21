@@ -196,7 +196,12 @@ Configure in Claude Desktop / Cursor / any MCP client:
 | `list_sources` | Health of every source |
 | `source_items` | Full ranking for one source |
 | `topic_breakdown` | CN vs intl topic share |
-| **`term_history`** | **How long has this term been around** — appearance trail + rising / persistent / fading / sporadic |
+| `term_history` | **How long has this term been around** — trail + rising / persistent / fading / sporadic |
+
+> **About history**: `term_history` reads `out/history.jsonl`.
+> Locally it accumulates on its own; under GitHub Actions the workflow restores it from the
+> `gh-pages` branch and commits it back, so it grows in CI too. Last 600 rounds kept
+> (~16 MB / ~300 days).
 
 **Why time beats the snapshot**: a single trending page can't tell "dominating for weeks"
 from "just showed up today".

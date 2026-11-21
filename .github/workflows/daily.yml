@@ -14,6 +14,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: daily-radar
+  cancel-in-progress: false
+
 jobs:
   fetch:
     runs-on: ubuntu-latest
@@ -29,13 +33,30 @@ jobs:
       - name: Install optional deps
         run: pip install jieba
 
+      # ── 关键：把上一轮的历史捞回来 ──────────────────────
+      # Actions 每次都是全新虚拟机，不捞回来 history.jsonl 每次都从零开始，
+      # term_history 就永远只看得到当天的数据。
+      - name: Restore history from gh-pages
+        run: |
+          set -x
+          git fetch origin gh-pages --depth=1 2>/dev/null || true
+          mkdir -p out
+          if git show origin/gh-pages:history.jsonl > out/history.jsonl 2>/dev/null; then
+            echo "restored rounds: $(wc -l < out/history.jsonl)"
+          else
+            echo "no history yet — starting fresh"
+            : > out/history.jsonl
+          fi
+
       - name: Fetch a round
         env:
           RADAR_HTTP_PROXY: ${{ secrets.RADAR_HTTP_PROXY }}
           LLM_BASE: ${{ secrets.LLM_BASE }}
           LLM_KEY: ${{ secrets.LLM_KEY }}
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
-        run: python3 radar.py
+        run: |
+          python3 radar.py
+          echo "history after fetch: $(wc -l < out/history.jsonl) rounds"
 
       - name: Publish to Cloudflare Pages
         if: github.event.inputs.publish_pages == 'true'
@@ -47,16 +68,23 @@ jobs:
           npm i -g wrangler
           python3 radar.py --publish
 
-      - name: Commit report to gh-pages
+      # ── 把报告 + 历史一起提交回 gh-pages ────────────────
+      - name: Commit report and history to gh-pages
         run: |
           set -e
           STAMP=$(date -u +%Y%m%d-%H%M%S)
+          ROUNDS=$(wc -l < out/history.jsonl | tr -d ' ')
+
           mkdir -p /tmp/site
           cp out/latest.html /tmp/site/index.html
           cp out/latest.md   /tmp/site/latest.md 2>/dev/null || true
+          cp out/history.jsonl /tmp/site/history.jsonl
           LATEST=$(ls -d out/*/ 2>/dev/null | tail -1)
-          [ -n "$LATEST" ] && cp "${LATEST}trends.json" /tmp/site/data.json 2>/dev/null || true
-          echo "$STAMP" > /tmp/site/updated.txt
+          if [ -n "$LATEST" ]; then
+            cp "${LATEST}trends.json" /tmp/site/data.json 2>/dev/null || true
+          fi
+          printf '%s\n' "$STAMP" > /tmp/site/updated.txt
+          printf '%s\n' "$ROUNDS" > /tmp/site/history-rounds.txt
 
           git config user.name  "radar-bot"
           git config user.email "radar-bot@users.noreply.github.com"
@@ -65,5 +93,5 @@ jobs:
           git rm -rf . --quiet 2>/dev/null || true
           cp -r /tmp/site/. .
           git add -A
-          git commit -m "report: $STAMP" || echo "no change"
+          git commit -m "report: $STAMP · history: $ROUNDS rounds" || echo "no change"
           git push -f origin gh-pages

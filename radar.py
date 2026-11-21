@@ -571,8 +571,12 @@ def refresh_latest(report_path: str, keep_rounds: int = 30) -> None:
         pass
 
 
-def trim_history(history_path: str, keep_lines: int = 5000) -> None:
-    """history.jsonl 只留最近 N 轮，防止一年后变成几百 MB。"""
+def trim_history(history_path: str, keep_lines: int = 600) -> None:
+    """history.jsonl 只留最近 N 轮。
+
+    每轮约 27 KB（所有平台的标题），600 轮 ≈ 16 MB、约 300 天。
+    这个文件要跟报告一起提交到 gh-pages，所以不能让它长太大。
+    """
     if not os.path.exists(history_path):
         return
     try:

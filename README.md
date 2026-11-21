@@ -246,7 +246,11 @@ python3 mcp_server.py   # 起 server（stdio）
 | `list_sources` | 所有源的状态（排障用） |
 | `source_items` | 某个源的完整榜单 |
 | `topic_breakdown` | 国内 vs 国外的主题占比对照 |
-| **`term_history`** | **这个词火多久了** —— 出现轨迹 + rising / persistent / fading / sporadic 判断 |
+| `term_history` | **这个词火多久了** —— 出现轨迹 + rising / persistent / fading / sporadic 判断 |
+
+> **关于历史数据**：`term_history` 依赖 `out/history.jsonl`。
+> 本地跑会自动累积；用 GitHub Actions 时 workflow 会从 `gh-pages` 分支把它捞回来再提交回去，
+> 所以 CI 里也能长起来。保留最近 600 轮（约 16 MB / 300 天）。
 
 **为什么「时间」比「此刻」重要**：
 
