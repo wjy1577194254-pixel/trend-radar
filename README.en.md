@@ -164,6 +164,39 @@ envload.py          dependency-free .env loader
 - **Sources rot.** Platforms change their APIs; `sources.py` is the most fragile part
 - **No long-term archive** — only the last 30 rounds are kept
 
+## Event deduplication: the same story isn't counted twice
+
+660 items from 21 sources is really about 585 distinct events — **the same story carried by
+several platforms gets merged into one event**.
+
+Without it: heat is multiplied by the number of platforms, and a term search returns 15 rows
+that are actually 5 stories.
+
+**Two criteria** (`cluster.py`):
+
+1. **Character similarity ≥ 0.55** (2-gram Jaccard) — catches verbatim reposts
+2. **≥ 2 shared content words after tokenization** — catches rewrites
+
+The second one is the important one. Tokenization, not n-grams: 特朗普 would produce
+特朗 / 朗普 / 特朗普 as three separate matches and over-merge.
+
+**Three guards against over-merging:**
+
+- **CJK and Latin titles never merge** — different languages, different origin
+- **Chinese needs at least one shared word ≥ 3 chars** — stops 深圳 / 回应 from doing the work
+- **English threshold is higher** (Jaccard 0.70, ≥3 shared) — English rewrites differ more
+
+**What each event keeps:**
+
+| Field | Meaning |
+|---|---|
+| `origin_source` | **Which platform saw it first** (we have fetch times, not publish times) |
+| `first_seen` | When it first entered our view |
+| `last_updated` | Most recent fetch |
+| `platforms` | Every platform carrying it |
+| `source_count` | How many are carrying it — the real heat |
+| `aggregate_heat` | Summed heat across platforms |
+
 ## For agents: MCP server
 
 The data isn't just readable — it's queryable.
@@ -196,6 +229,8 @@ Configure in Claude Desktop / Cursor / any MCP client:
 | `list_sources` | Health of every source |
 | `source_items` | Full ranking for one source |
 | `topic_breakdown` | CN vs intl topic share |
+| `list_events` | Deduplicated events — multi-platform stories already merged |
+| `event_detail` | Full detail for one event |
 | `term_history` | **How long has this term been around** — trail + rising / persistent / fading / sporadic |
 
 > **About history**: `term_history` reads `out/history.jsonl`.

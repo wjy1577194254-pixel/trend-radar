@@ -247,6 +247,63 @@ def tool_topics(_args: dict) -> dict:
     return {"topics": rows}
 
 
+def tool_list_events(args: dict) -> dict:
+    """多平台事件 —— 同一条新闻上多个榜已经合并，不会重复计数。"""
+    data = load_data()
+    if not data:
+        return {"error": "还没有数据。先跑一次 python3 radar.py"}
+
+    events = data.get("events") or []
+    if not events:
+        return {"error": "这一轮没有事件数据（radar.py 版本较旧？）"}
+
+    min_plat = args.get("min_platforms") or 2
+    rows = [e for e in events if e["source_count"] >= min_plat]
+    rows.sort(key=lambda e: -e["source_count"])
+    limit = args.get("limit") or 20
+
+    total_items = sum(len(s.get("items", [])) for s in data["sources"].values() if s.get("ok"))
+    return {
+        "items_fetched": total_items,
+        "events_total": len(events),
+        "merged_away": total_items - len(events),
+        "note": "同一条新闻被多个平台报道时已合并成一个事件，热度不重复计数。",
+        "events_on_multi_platforms": len(rows),
+        "items": [
+            {
+                "event_id": e["event_id"],
+                "title": e["title"],
+                "source_count": e["source_count"],
+                "platforms": e["platforms"],
+                "origin": {"source": e["origin_source_name"], "first_seen": e["first_seen"]},
+                "last_updated": e["last_updated"],
+                "region": e["region"],
+                "titles": e["titles"][:4],
+                "urls": [s["url"] for s in e["sources"] if s["url"]][:3],
+            }
+            for e in rows[:limit]
+        ],
+    }
+
+
+def tool_event_detail(args: dict) -> dict:
+    """单个事件的完整信息：每个平台排第几、热度多少、什么时候第一次出现。"""
+    data = load_data()
+    if not data:
+        return {"error": "还没有数据。先跑一次 python3 radar.py"}
+
+    eid = (args.get("event_id") or "").strip()
+    events = data.get("events") or []
+    for e in events:
+        if e["event_id"] == eid:
+            return e
+    return {
+        "error": f"没有这个事件：{eid}",
+        "hint": "先用 list_events 拿 event_id",
+        "available": [e["event_id"] for e in events[:20]],
+    }
+
+
 def tool_term_history(args: dict) -> dict:
     """一个词在各轮抓取中的出现轨迹 —— 用来区分真趋势和一次性上榜。"""
     term = (args.get("term") or "").strip()
@@ -377,6 +434,30 @@ TOOLS = [
         },
     },
     {
+        "name": "list_events",
+        "description": "去重后的热点事件列表。同一条新闻上了多个平台时会合并成一个事件，"
+                       "热度不会重复计数。每条带首发来源（哪个平台最先抓到）和最后更新时间。"
+                       "想知道「今天真正发生了什么」用它，而不是看 693 条原始条目。",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "min_platforms": {"type": "integer", "description": "至少几个平台报道才算热点，默认 2"},
+                "limit": {"type": "integer", "description": "返回条数，默认 20"},
+            },
+        },
+    },
+    {
+        "name": "event_detail",
+        "description": "一个事件的完整明细：每个平台分别排第几、热度多少、什么时候首次出现。",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "event_id": {"type": "string", "description": "list_events 返回的 event_id，如 e001"},
+            },
+            "required": ["event_id"],
+        },
+    },
+    {
         "name": "term_history",
         "description": "一个词在历史各轮抓取中的出现轨迹。用来区分「真趋势」和「今天刚好上了榜」——"
                        "返回每轮出现在几个平台、最低排名、以及 rising/persistent/fading/sporadic 的判断。"
@@ -406,6 +487,8 @@ HANDLERS = {
     "source_items": tool_source_items,
     "topic_breakdown": tool_topics,
     "term_history": tool_term_history,
+    "list_events": tool_list_events,
+    "event_detail": tool_event_detail,
 }
 
 

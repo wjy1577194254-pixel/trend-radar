@@ -26,6 +26,7 @@ import csv
 import html
 import json
 import os
+import pathlib
 import re
 import shutil
 import subprocess
@@ -1137,6 +1138,21 @@ def run_once(sids: list[str], args, prev_titles: dict) -> dict:
             },
         },
     }
+
+    # 事件聚类：同一条新闻上多个榜 → 合并成一个事件，避免热度重复计数
+    try:
+        from cluster import build_events, load_first_seen
+
+        _hist = os.path.join(OUT_ROOT, "history.jsonl")
+        _fs = load_first_seen(pathlib.Path(_hist)) if os.path.exists(_hist) else {}
+        events = build_events(payload, _fs)
+        payload["events"] = events
+        _items = sum(len(r.get("items", [])) for r in results.values() if r.get("ok"))
+        print(f"  事件聚类: {_items} 条 → {len(events)} 个事件 "
+              f"（合并 {_items - len(events)} 条重复）")
+    except Exception as exc:  # noqa: BLE001
+        print(f"  ! 事件聚类跳过: {type(exc).__name__}: {exc}")
+        payload["events"] = []
 
     write_json(os.path.join(out_dir, "trends.json"), payload)
     write_csv(os.path.join(out_dir, "words.csv"), results)
