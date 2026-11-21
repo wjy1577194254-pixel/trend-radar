@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>论文讲解器</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0d10; --card:#14181d; --card2:#101317; --line:#232a33;
+  --fg:#e8eaed; --dim:#8b95a3; --dim2:#5f6875;
+  --accent:#ff5c1b; --intl:#4aa8ff; --good:#4ade80;
+}
+body{background:var(--bg);color:var(--fg);
+  font:15px/1.7 -apple-system,"PingFang SC","Hiragino Sans GB","Segoe UI",system-ui,sans-serif;
+  padding:36px 22px 90px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:900px;margin:0 auto}
+h1{font-size:26px;font-weight:700;letter-spacing:-.02em}
+h1 em{font-style:normal;color:var(--accent)}
+.sub{color:var(--dim);font-size:13px;margin:6px 0 26px}
+
+.bar{display:flex;gap:10px;margin-bottom:22px}
+.bar input{flex:1;background:var(--card);border:1px solid var(--line);border-radius:9px;
+  padding:12px 14px;color:var(--fg);font-size:14px;font-family:inherit;outline:none}
+.bar input:focus{border-color:#3a4552}
+.bar input::placeholder{color:var(--dim2)}
+.bar button{background:var(--accent);color:#08090b;border:none;border-radius:9px;
+  padding:0 22px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+  transition:opacity .15s}
+.bar button:hover{opacity:.88}
+.bar button:disabled{opacity:.4;cursor:default}
+
+.hint{color:var(--dim2);font-size:12px;margin-bottom:28px;line-height:2}
+.hint code{background:#1a1f26;padding:1px 5px;border-radius:3px;color:var(--dim);
+  font-family:ui-monospace,Menlo,monospace;font-size:11px}
+
+.loading{display:none;align-items:center;gap:10px;color:var(--dim);font-size:13px;
+  padding:22px;background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:20px}
+.loading.on{display:flex}
+.spin{width:14px;height:14px;border:2px solid #2a323c;border-top-color:var(--accent);
+  border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+#out{display:none}
+#out.on{display:block}
+
+.paper-head{background:linear-gradient(135deg,#181c22,#12161a);border:1px solid var(--line);
+  border-radius:12px;padding:22px 24px;margin-bottom:18px}
+.paper-head h2{font-size:20px;font-weight:600;line-height:1.45;margin-bottom:8px;letter-spacing:-.01em}
+.paper-head .en{color:var(--dim2);font-size:12.5px;font-family:ui-monospace,Menlo,monospace;
+  line-height:1.6;margin-bottom:10px;word-break:break-word}
+.paper-head .meta{color:var(--dim);font-size:12px;display:flex;gap:14px;flex-wrap:wrap}
+.paper-head .meta a{color:var(--intl);text-decoration:none}
+.paper-head .meta a:hover{text-decoration:underline}
+
+.tldr{font-size:17px;line-height:1.75;color:#f0f3f6;padding:18px 22px;margin-bottom:18px;
+  border-left:3px solid var(--accent);background:#15191f;border-radius:0 10px 10px 0}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+@media(max-width:720px){.grid{grid-template-columns:1fr}}
+.box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.box h3{font-size:12px;color:var(--dim);font-weight:500;letter-spacing:.06em;
+  text-transform:uppercase;margin-bottom:10px}
+.box p{font-size:14px;line-height:1.85;color:#d6dbe1;white-space:pre-wrap}
+.box.warn{border-color:#3b2226;background:#1a1416}
+.box.warn h3{color:#e8a0a0}
+.box.warn p{color:#e3c4c4}
+
+.terms{margin-bottom:18px}
+.term{display:grid;grid-template-columns:150px 1fr;gap:12px;padding:9px 0;
+  border-bottom:1px solid #191e25;font-size:13.5px}
+.term:last-child{border-bottom:none}
+.term b{color:var(--fg);font-weight:600}
+.term .en{color:var(--dim2);font-family:ui-monospace,Menlo,monospace;font-size:11.5px;
+  display:block;margin-top:2px}
+.term span{color:#c2c9d2;line-height:1.7}
+
+.abstract{background:var(--card2);border:1px solid var(--line);border-radius:10px;
+  padding:18px 20px;margin-bottom:18px}
+.abstract h3{font-size:12px;color:var(--dim);font-weight:500;letter-spacing:.06em;
+  text-transform:uppercase;margin-bottom:10px}
+.abstract p{font-size:13.5px;line-height:1.9;color:#c9d0d8;white-space:pre-wrap}
+
+.qa{margin-top:34px;padding-top:22px;border-top:1px solid var(--line);display:none}
+.qa.on{display:block}
+.qa h2{font-size:15px;font-weight:600;margin-bottom:14px}
+.qa h2 small{color:var(--dim2);font-weight:400;font-size:12px;margin-left:8px}
+.qlist{display:flex;flex-direction:column;gap:14px;margin-bottom:16px}
+.qa-item{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.qa-item .q{color:var(--accent);font-size:13.5px;font-weight:500;margin-bottom:8px}
+.qa-item .a{font-size:14px;line-height:1.9;color:#d6dbe1;white-space:pre-wrap}
+.qa-item .a.thinking{color:var(--dim2)}
+
+.err{background:#1a1416;border:1px solid #3b2226;border-radius:9px;padding:14px 16px;
+  color:#e8a0a0;font-size:13px;margin-bottom:16px;display:none}
+.err.on{display:block}
+
+.gate{position:fixed;inset:0;background:rgba(8,10,13,.92);z-index:99;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  display:flex;align-items:center;justify-content:center;padding:24px}
+.gate.off{display:none}
+.gate-box{width:100%;max-width:420px;background:var(--card);border:1px solid var(--line);
+  border-radius:14px;padding:28px 26px}
+.gate-box h2{font-size:18px;margin-bottom:8px}
+.gate-box p{color:var(--dim);font-size:13px;margin-bottom:18px;line-height:1.8}
+.gate-box input{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:8px;
+  padding:11px 13px;color:var(--fg);font-size:13.5px;font-family:inherit;outline:none;margin-bottom:9px}
+.gate-box input:focus{border-color:#3a4552}
+.gate-box button{width:100%;background:var(--accent);color:#08090b;border:none;border-radius:8px;
+  padding:11px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit}
+.gate-box button:hover{opacity:.88}
+.gate-or{text-align:center;color:var(--dim2);font-size:11.5px;margin:16px 0;position:relative}
+.gate-or::before,.gate-or::after{content:'';position:absolute;top:50%;width:42%;height:1px;background:#222831}
+.gate-or::before{left:0}.gate-or::after{right:0}
+.gate-err{color:#f87171;font-size:12px;margin-top:10px;min-height:16px}
+footer{margin-top:46px;color:var(--dim2);font-size:11.5px;line-height:2;
+  border-top:1px solid var(--line);padding-top:16px}
+</style>
+</head>
+<body>
+<div class="gate" id="gate">
+  <div class="gate-box">
+    <h2>私有工具</h2>
+    <p>这个页面只对本人开放。<br>两种进入方式，任选其一。</p>
+    <input id="g-code" placeholder="访问码" autocomplete="off">
+    <button id="g-code-btn">用访问码进入</button>
+    <div class="gate-or">或</div>
+    <input id="g-key" placeholder="你自己的 API Key（sk-...）" autocomplete="off">
+    <button id="g-key-btn">用我的 Key 进入</button>
+    <div class="gate-err" id="g-err"></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <h1>论文讲解器 <em>/</em> 粘贴链接，讲给你听</h1>
+  <p class="sub">arXiv 或任意论文网页 · 自动翻译 + 结构化解读 · 不懂可以接着问</p>
+
+  <div class="bar">
+    <input id="url" placeholder="https://arxiv.org/abs/2611.26629" autocomplete="off">
+    <button id="go">分析</button>
+  </div>
+  <div class="hint">
+    支持 <code>arxiv.org/abs/…</code>、<code>arxiv.org/pdf/…</code>、以及大部分论文页面。
+    分析一篇约 20-40 秒。
+  </div>
+
+  <div class="err" id="err"></div>
+  <div class="loading" id="loading"><span class="spin"></span><span id="loadtxt">正在抓取并解读…</span></div>
+
+  <div id="out">
+    <div class="paper-head">
+      <h2 id="p-title"></h2>
+      <div class="en" id="p-en"></div>
+      <div class="meta" id="p-meta"></div>
+    </div>
+
+    <div class="tldr" id="p-tldr"></div>
+
+    <div class="grid">
+      <div class="box"><h3>解决什么问题</h3><p id="p-problem"></p></div>
+      <div class="box"><h3>怎么做的</h3><p id="p-method"></p></div>
+      <div class="box"><h3>结果</h3><p id="p-results"></p></div>
+      <div class="box warn"><h3>局限</h3><p id="p-limits"></p></div>
+    </div>
+
+    <div class="box terms" id="p-terms-box">
+      <h3>术语</h3>
+      <div id="p-terms"></div>
+    </div>
+
+    <div class="abstract">
+      <h3>摘要翻译</h3>
+      <p id="p-abstract"></p>
+    </div>
+  </div>
+
+  <div class="qa" id="qa">
+    <h2>接着问 <small>针对这篇论文，随便问</small></h2>
+    <div class="qlist" id="qlist"></div>
+    <div class="bar" style="margin-bottom:0">
+      <input id="q" placeholder="比如：这个方法为什么比之前的快？" autocomplete="off">
+      <button id="ask">问</button>
+    </div>
+  </div>
+
+  <footer>
+    由 <code>paper_server.py</code> 提供 · 模型端点取自 ~/.codex/config.toml · 内容仅供参考，关键结论请回原文核对
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// ---------- 准入 ----------
+const AUTH_KEY = 'paper_auth_v1';
+function getAuth() {
+  try { return JSON.parse(localStorage.getItem(AUTH_KEY) || 'null'); } catch (e) { return null; }
+}
+function setAuth(a) { try { localStorage.setItem(AUTH_KEY, JSON.stringify(a)); } catch (e) {} }
+function authHeaders() {
+  const h = {'Content-Type': 'application/json'};
+  const a = getAuth();
+  if (a && a.type === 'code') h['x-access-code'] = a.value;
+  else if (a && a.type === 'key') h['x-user-key'] = a.value;
+  return h;
+}
+function showGate(on) {
+  $('gate').classList.toggle('off', !on);
+  document.body.style.overflow = on ? 'hidden' : '';
+}
+function rejectAgain() {
+  try { localStorage.removeItem(AUTH_KEY); } catch (e) {}
+  showGate(true);
+  $('g-err').textContent = '这个凭据被拒绝了，换一个试试';
+}
+async function boot() {
+  const a = getAuth();
+  if (!a) { showGate(true); return; }
+  try {
+    const r = await fetch('/api/ping', {headers: authHeaders()});
+    if (r.ok) { afterAuth(); return; }
+  } catch (e) { /* 网络问题就当没验证过 */ }
+  try { localStorage.removeItem(AUTH_KEY); } catch (e) {}
+  showGate(true);
+  $('g-err').textContent = '旧凭据已失效，请重新输入';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  boot();
+  $('g-code-btn').onclick = () => {
+    const v = $('g-code').value.trim();
+    if (!v) { $('g-err').textContent = '先填访问码'; return; }
+    setAuth({type: 'code', value: v}); $('g-err').textContent = ''; afterAuth();
+  };
+  $('g-key-btn').onclick = () => {
+    const v = $('g-key').value.trim();
+    if (!v) { $('g-err').textContent = '先填 API Key'; return; }
+    setAuth({type: 'key', value: v}); $('g-err').textContent = ''; afterAuth();
+  };
+});
+let current = null;        // {url, paper, analysis}
+let history = [];
+let busy = false;
+
+const CACHE_KEY = 'paper_cache_v1';
+function cacheGet(url) {
+  try {
+    const all = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+    const hit = all[url];
+    if (!hit) return null;
+    if (Date.now() - (hit._ts || 0) > 7 * 864e5) return null;   // 7 天过期
+    return hit;
+  } catch (e) { return null; }
+}
+function cacheSet(url, payload) {
+  try {
+    const all = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+    all[url] = Object.assign({}, payload, {_ts: Date.now()});
+    const keys = Object.keys(all);
+    if (keys.length > 40) {
+      keys.sort((a, b) => (all[a]._ts || 0) - (all[b]._ts || 0))
+          .slice(0, keys.length - 40).forEach(k => delete all[k]);
+    }
+    localStorage.setItem(CACHE_KEY, JSON.stringify(all));
+  } catch (e) { /* 隐私模式下写不进去，忽略 */ }
+}
+
+function setErr(msg) {
+  const e = $('err');
+  e.textContent = msg || '';
+  e.classList.toggle('on', !!msg);
+}
+
+function loading(on, txt) {
+  $('loading').classList.toggle('on', on);
+  if (txt) $('loadtxt').textContent = txt;
+  $('go').disabled = on;
+  $('url').disabled = on;
+}
+
+async function analyze() {
+  const url = $('url').value.trim();
+  if (!url) { setErr('先粘一个论文链接'); return; }
+  if (busy) return;
+  busy = true;
+  setErr('');
+  $('out').classList.remove('on');
+  $('qa').classList.remove('on');
+  $('qlist').innerHTML = '';
+  history = [];
+  const cached = cacheGet(url);
+  if (cached) {
+    current = {url: cached.paper.url, paper: cached.paper, analysis: cached.analysis};
+    window.__usages = [];
+    render(cached.paper, cached.analysis);
+    $('qa').classList.add('on');
+    const meta = document.getElementById('p-meta');
+    if (meta) meta.insertAdjacentHTML('beforeend', ' · <span style="color:#4ade80">本地缓存（0 token）</span>');
+    busy = false;
+    return;
+  }
+
+  loading(true, '正在抓取并解读…（约 20-40 秒）');
+
+  try {
+    const r = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({url})
+    });
+    const d = await r.json();
+    if (d.needAuth) { rejectAgain(); throw new Error('需要重新验证'); }
+    if (!d.ok) throw new Error(d.error || '分析失败');
+
+    current = {url: d.paper.url, paper: d.paper, analysis: d.analysis};
+    window.__usages = d.usage ? [d.usage.total_tokens] : [];
+    cacheSet(url, {paper: d.paper, analysis: d.analysis});
+    render(d.paper, d.analysis);
+    $('qa').classList.add('on');
+  } catch (e) {
+    setErr(String(e.message || e));
+  } finally {
+    loading(false);
+    busy = false;
+  }
+}
+
+function render(paper, a) {
+  $('p-title').textContent = a.title_zh || paper.title;
+  $('p-en').textContent = paper.title && paper.title !== a.title_zh ? paper.title : '';
+
+  const m = [];
+  if (paper.authors && paper.authors.length)
+    m.push(paper.authors.slice(0, 6).join(', ') + (paper.authors.length > 6 ? ' 等' : ''));
+  if (a.field) m.push(a.field);
+  if (paper.has_fulltext) m.push('<span style="color:#4ade80">已读全文</span>');
+  else if (paper.source === 'arxiv') m.push('<span style="color:#8b95a3">摘要级</span>');
+  if (a._meta && a._meta.elapsed) m.push(a._meta.elapsed + 's');
+  if (paper.url) m.push('<a href="' + paper.url + '" target="_blank" rel="noopener">原文 ↗</a>');
+  $('p-meta').innerHTML = m.join(' · ');
+
+  $('p-tldr').textContent = a.tldr || '';
+  $('p-problem').textContent = a.problem || '—';
+  $('p-method').textContent = a.method || '—';
+  $('p-results').textContent = a.results || '—';
+  $('p-limits').textContent = a.limits || '—';
+
+  const terms = a.terms || [];
+  $('p-terms-box').style.display = terms.length ? '' : 'none';
+  $('p-terms').innerHTML = terms.map(t =>
+    '<div class="term"><div><b>' + esc(t.zh || t.en) +
+    '</b><span class="en">' + esc(t.en || '') + '</span></div><span>' +
+    esc(t.explain || '') + '</span></div>'
+  ).join('');
+
+  $('p-abstract').textContent = a.abstract_zh || paper.abstract || '';
+  $('out').classList.add('on');
+  $('out').scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+async function askQuestion() {
+  const q = $('q').value.trim();
+  if (!q || !current || busy) return;
+  busy = true;
+  $('q').value = '';
+  $('ask').disabled = true;
+
+  const item = document.createElement('div');
+  item.className = 'qa-item';
+  item.innerHTML = '<div class="q">' + esc(q) + '</div><div class="a thinking">思考中…</div>';
+  $('qlist').appendChild(item);
+  item.scrollIntoView({behavior: 'smooth', block: 'center'});
+
+  try {
+    const r = await fetch('/api/ask', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        url: current.url,
+        question: q,
+        history: history,
+        analysis: current.analysis
+      })
+    });
+    const d = await r.json();
+    if (d.needAuth) { rejectAgain(); }
+    const ans = d.ok ? d.answer : ('出错了：' + (d.error || '未知'));
+    item.querySelector('.a').classList.remove('thinking');
+    item.querySelector('.a').textContent = ans;
+    if (d.ok) {
+      history.push({q, a: ans});
+      if (d.usage && window.__usages) {
+        window.__usages.push(d.usage.total_tokens);
+        const meta = document.getElementById('p-meta');
+        if (meta) {
+          const old = meta.querySelector('span[data-usage]');
+          if (old) old.remove();
+          const sp = document.createElement('span');
+          sp.dataset.usage = '1';
+          sp.style.color = '#6b7380';
+          sp.textContent = '本次 ' + window.__usages.join(' + ') + ' tokens';
+          meta.appendChild(sp);
+        }
+      }
+    }
+  } catch (e) {
+    item.querySelector('.a').classList.remove('thinking');
+    item.querySelector('.a').textContent = '请求失败：' + e.message;
+  } finally {
+    busy = false;
+    $('ask').disabled = false;
+    $('q').focus();
+  }
+}
+
+$('go').onclick = analyze;
+$('ask').onclick = askQuestion;
+$('url').addEventListener('keydown', e => { if (e.key === 'Enter') analyze(); });
+$('q').addEventListener('keydown', e => { if (e.key === 'Enter') askQuestion(); });
+
+// 支持 ?url=xxx 直接带入 —— 但要等闸门通过后再发请求，否则会先吃一次 401
+let pendingAnalyze = null;
+const pUrl = new URLSearchParams(location.search).get('url');
+if (pUrl) { $('url').value = pUrl; pendingAnalyze = pUrl; }
+
+function afterAuth() {
+  showGate(false);
+  if (pendingAnalyze) {
+    pendingAnalyze = null;
+    analyze();
+  }
+}
+</script>
+</body>
+</html>
