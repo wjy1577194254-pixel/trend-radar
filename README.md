@@ -1,5 +1,16 @@
 # 趋势雷达 · Social Trend Radar
 
+[English](README.en.md) · 中文
+
+![报告首屏](docs/hero.png)
+
+<details>
+<summary>跨平台共识词 —— 条形按热度分四档配色（红 → 红橙 → 橙绿 → 绿）</summary>
+
+![共识词](docs/consensus.png)
+
+</details>
+
 抓 21 个国内外公开热榜 → 归一化 → 词频 / 主题分布 / 跨平台共识词 → 出一份自包含 HTML 报告，可选自动发布到 Cloudflare Pages。
 
 加一个配套的**论文讲解器**：贴一篇 arXiv 链接，出「问题 / 方法 / 结果 / 局限」四句话解读，可以继续追问。
